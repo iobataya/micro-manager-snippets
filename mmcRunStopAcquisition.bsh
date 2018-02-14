@@ -1,5 +1,8 @@
 /*
- * GUIなしに画像の取得開始・停止をする。
+ * Run/stop aquisition without GUI
+ *
+ * If acquisition is running, it is stopped.
+ * Otherwise, continous sequence ACQ is started.
  */
 boolean isRunning = mmc.isSequenceRunning();
 print(isRunning);
