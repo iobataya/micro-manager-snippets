@@ -1,0 +1,55 @@
+*
+ * 1. Blink LED
+ * 2. ACQ AnalongInput0 as TTL HIGH/LOW
+ */
+
+/*
+ * 1. Blink LED
+ * Pin 13 is assigned to internal LED. It's good for checking.
+ * Since the digital-output is control by shutter on/off,
+ * shutter should be "1" (string) whenever you want to 
+ * output on Digital I/O.
+ */
+static String SHUTTER = "Arduino-Shutter";
+static String SWITCH = "Arduino-Switch";
+static String STATE = "State";
+static String LED_ON = "32";
+static String LED_OFF = "0";
+static String ONOFF = "OnOff";
+
+mmc.setProperty(SHUTTER,ONOFF,"1");
+print("Blinking started on Arduino.");
+for (int i=0;i<10;i++){
+  mmc.setProperty(SWITCH,STATE,LED_ON);
+  Thread.sleep(200);
+  mmc.setProperty(SWITCH,STATE,LED_OFF);
+  Thread.sleep(200);
+}
+
+/**
+ * 2. Get AnalogInput0 as TTL
+ * When Arduino is connected via USB,
+ * voltage is calculated as Value(10bit)VCC(5V)*1024
+ */
+static String ARD_IN = "Arduino-Input";
+static String IN0 = "AnalogInput0";
+long last = System.nanoTime();
+long current= System.nanoTime();
+long duration;
+String adc0;
+StringBuilder sb = new StringBuilder();
+for (int i=0;i<10;i++){
+  adc0 = mmc.getProperty(ARD_IN,IN0);
+  voltage = Float.parseFloat(adc0)*5.0/1024;
+  duration = (current-last)/1000000;
+  sb.append(current).append("\t").append(adc0).append("\t").append(voltage);
+  sb.append(" V\t").append(duration).append(" ms\t");
+   if (voltage>2.2){
+     sb.append("HIGH\n");
+   }else{
+     sb.append("LOW\n");
+   }
+  last = current;
+  current = System.nanoTime();
+}
+print(sb.toString());
