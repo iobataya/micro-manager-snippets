@@ -1,0 +1,15 @@
+/*
+ * GUIなしに画像の取得開始・停止をする。
+ */
+boolean isRunning = mmc.isSequenceRunning();
+print(isRunning);
+if (isRunning == true) {
+	print("ACQ is running.");
+	mmc.stopSequenceAcquisition();
+	print("ACQ stopped.");
+}else{
+	print("ACQ is not running.");
+	// arg = delay in milliseconds.
+	mmc.startContinuousSequenceAcquisition(10);
+	print("ACQ started.");
+}
