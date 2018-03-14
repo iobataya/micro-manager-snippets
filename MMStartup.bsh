@@ -1,0 +1,158 @@
+import java.text.SimpleDateFormat;
+import java.util.Date;
+//////////////////////////////////////////////////////////////////////////////////
+// Stop runnng instances and unload devices
+//////////////////////////////////////////////////////////////////////////////////
+gui.stopAllActivity();
+imageProcessorPipeline = gui.getImageProcessorPipeline();
+if(imageProcessorPipeline!=null){
+	count = imageProcessorPipeline.size();
+	for (int i=0;i<count;i++){
+		gui.removeImageProcessor(imageProcessorPipeline.get(i));
+	}
+	if (count>0){
+  		print("Processors are cleared:" + String.valueOf(count)+"\n");
+	}
+}
+if(gui.getSnapLiveWin()!=null){
+	gui.getSnapLiveWin().setVisible(false);
+}
+mmc.unloadAllDevices();
+
+//////////////////////////////////////////////////////////////////////////////////
+// Initialize devices
+//////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * load device
+ */
+public void loadDev(String label,String moduleName,String deviceName){
+	mmc.loadDevice(label,moduleName,deviceName);
+}
+/**
+ * List all device property names
+ */
+public void listDevicePropertyNames(String device){
+  properties = mmc.getDevicePropertyNames(device);
+  for(int i=0;i<properties.size();i++){
+  	 print(properties.get(i));
+  }
+}
+
+/**
+ * List all allowed property values
+ */
+public void listAllowedPropNames(String label,String propName){
+	props = mmc.getAllowedPropertyValues(label,propName);
+	for(int i=0;i<props.size();i++){
+		print(props.get(i));
+	}
+}
+
+/**
+ * Constants
+ */
+ANDOR_CMOS = "Andor sCMOS Camera";
+GROUP0 = "ZylaArduino";
+CONFIG0 = "GNP default";
+
+// reset previous configuration if any
+mmc.unloadAllDevices();
+
+
+// load devices
+loadDev("DHub","DemoCamera","DHub");
+loadDev(ANDOR_CMOS,"AndorSDK3","Andor sCMOS Camera");
+loadDev("COM3","SerialManager","COM3");
+loadDev("Arduino-Hub","Arduino","Arduino-Hub");
+loadDev("Arduino-Input","Arduino","Arduino-Input");
+
+// Pre-init settings for devices
+mmc.setSerialProperties("COM3","500.0000","57600","0.0000","Off","None","1");
+mmc.setProperty("COM3","Verbose",0);
+
+mmc.setProperty("Arduino-Hub","Logic","Normal");
+mmc.setProperty("Arduino-Hub","Port","COM3");
+mmc.setProperty("Arduino-Input","Pin","All");
+mmc.setProperty("Arduino-Input","Pull-Up-Resistor","Off");
+
+// Pre-init settings for COM ports
+
+// Hub (parent) references
+mmc.setParentLabel("Arduino-Input","Arduino-Hub");
+
+print("\nINITIALIZING...");
+mmc.initializeAllDevices();
+
+// initialize the entire system
+
+// Roles
+mmc.setProperty("Core","Camera",ANDOR_CMOS);
+
+// Configuration presets
+// Group: ZylaArduino
+// Preset: GNP default
+// 
+// List all device property names when you need to confirm
+//listDevicePropertyNames(ANDOR_CMOS);
+
+// list allowed values
+//listAllowedPropNames(ANDOR_CMOS,"AcquisitionWindow");
+
+//mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"AcquisitionWindow", "512x512"); <- error
+mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"AcquisitionWindow", " 512x512"); // <- whitespace!
+mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"Exposure","30.0000");
+mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"FrameRate","80.1899");
+mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"Sensitivity/DynamicRange","16-bit (low noise & high well capacity)");
+mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"SensorCooling","Off");
+
+print("Current channel configuration: " + mmc.getCurrentConfig(CONFIG0));
+
+// set initial imaging mode
+mmc.setConfig(GROUP0, CONFIG0);
+print("\nCONFIGURING...");
+
+// configuration finished
+print("Configuration done");
+
+//////////////////////////////////////////////////////////////////////////////////
+// Add background subtraction. Each processors are on its thread.
+//////////////////////////////////////////////////////////////////////////////////
+print("Will create image processor...");
+gui.showPipelinePanel();
+
+subtractBgProcessor = new org.micromanager.subtractbackground.SubtractBackgroundProcessor();
+subtractBgProcessor.setApp(gui);
+gui.addImageProcessor(subtractBgProcessor);
+subtractBgProcessor.makeConfigurationGUI();
+
+arduinoProcessor = new org.micromanager.overlayarduino.OverlayArduinoProcessor();
+arduinoProcessor.setApp(gui);
+gui.addImageProcessor(arduinoProcessor);
+arduinoProcessor.makeConfigurationGUI();
+
+acqByTTL = new OverlayArduinoProcessor(gui);
+acqByTTL.setOverlayArduinoProcessor(arduinoProcessor);
+acqByTTL.setVisible(true);
+print("Processors are created.");
+
+//////////////////////////////////////////////////////////////////////////////////
+// Show Snap/Live window and Acquisition window
+//////////////////////////////////////////////////////////////////////////////////
+snapLiveWin = gui.getSnapLiveWin();
+snapLiveWin.setVisible(true);
+gui.enableLiveMode(true);
+
+// TODO
+//acqs = gui.getAcquisitionNames();
+//for (int i=0;i<acqs.length;i++){
+//	print(acqs[i]);
+//}
+
+//sdFormat = new SimpleDateFormat("yyyyMMdd");
+//gui.openAcquisition(gui.getUniqueAcquisitionName("gnp"),"C:Users/jpk10/AcquisitionData/"+sdFormat(new Date()),1000,0,0);
+
+//////////////////////////////////////////////////////////////////////////////////
+// Create another thread to watch TTL signal
+//////////////////////////////////////////////////////////////////////////////////
+
