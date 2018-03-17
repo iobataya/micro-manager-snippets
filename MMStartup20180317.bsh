@@ -1,0 +1,197 @@
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import ij.CompositeImage;
+import org.micromanager.graph.HistogramSettings;
+
+//////////////////////////////////////////////////////////////////////////////////
+// functions
+//////////////////////////////////////////////////////////////////////////////////
+public void loadDev(String label,String moduleName,String deviceName){
+	mmc.loadDevice(label,moduleName,deviceName);
+}
+public void listDevicePropertyNames(String device){
+  properties = mmc.getDevicePropertyNames(device);
+  for(int i=0;i<properties.size();i++){
+  	 print(properties.get(i));
+  }
+}
+public void listAllowedPropNames(String label,String propName){
+	props = mmc.getAllowedPropertyValues(label,propName);
+	for(int i=0;i<props.size();i++){
+		print(props.get(i));
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+// Stop runnng instances and unload devices
+//////////////////////////////////////////////////////////////////////////////////
+gui.stopAllActivity();
+imageProcessorPipeline = gui.getImageProcessorPipeline();
+if(imageProcessorPipeline!=null){
+	count = imageProcessorPipeline.size();
+	for (int i=0;i<count;i++){
+		gui.removeImageProcessor(imageProcessorPipeline.get(i));
+	}
+	if (count>0){
+  		print("Processors are cleared:" + String.valueOf(count)+"\n");
+	}
+}
+if(gui.getSnapLiveWin()!=null && gui.isLiveModeOn()){
+	gui.enableLiveMode(false);
+}
+mmc.unloadAllDevices();
+
+//////////////////////////////////////////////////////////////////////////////////
+// Initialize devices
+//////////////////////////////////////////////////////////////////////////////////
+USE_DEMOCAM = true;
+ANDOR_CMOS = "Andor sCMOS Camera";
+DEMOCAM = "DemoCamera";
+GROUP0 = "";
+CONFIG0 = "GNP default";
+
+// reset previous configuration if any
+mmc.unloadAllDevices();
+
+
+// load devices
+loadDev("COM3","SerialManager","COM3");
+if (USE_DEMOCAM){
+  loadDev("DHub",DEMOCAM,"DHub");
+  loadDev("DCam",DEMOCAM,"DCam");
+}else{
+  loadDev(ANDOR_CMOS,"AndorSDK3",ANDOR_CMOS);
+}
+loadDev("Arduino-Hub","Arduino","Arduino-Hub");
+loadDev("Arduino-Input","Arduino","Arduino-Input");
+
+// Pre-init settings for devices
+mmc.setSerialProperties("COM3","500.0000","57600","0.0000","Off","None","1");
+mmc.setProperty("COM3","Verbose",0);
+mmc.setProperty("Arduino-Hub","Logic","Normal");
+mmc.setProperty("Arduino-Hub","Port","COM3");
+mmc.setProperty("Arduino-Input","Pin","All");
+mmc.setProperty("Arduino-Input","Pull-Up-Resistor","Off");
+
+// Hub (parent) references
+if(USE_DEMOCAM){
+  mmc.setParentLabel("DCam","DHub");
+}
+mmc.setParentLabel("Arduino-Input","Arduino-Hub");
+
+print("\nINITIALIZING...");
+mmc.initializeAllDevices();
+
+// initialize the entire system
+
+// Roles
+if(USE_DEMOCAM){
+  mmc.setProperty("Core","Camera","DCam");
+}else{
+  mmc.setProperty("Core","Camera",ANDOR_CMOS);
+}
+
+// Configuration presets
+// Group: ZylaArduino
+// Preset: GNP default
+// 
+if(USE_DEMOCAM){
+  mmc.defineConfig(GROUP0,CONFIG0,"DCam","BitDepth","16");
+  mmc.defineConfig(GROUP0,CONFIG0,"DCam","Exposure","30.0000");
+  mmc.defineConfig(GROUP0,CONFIG0,"Core","Camera","DCam");
+}else{
+//  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"AcquisitionWindow", "512x512"); <- error
+//  listAllowedPropNames(ANDOR_CMOS,"AcquisitionWindow");
+  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"AcquisitionWindow", " 512x512"); // <- whitespace!
+  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"Exposure","30.0000");
+  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"FrameRate","80.1899");
+  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"Sensitivity/DynamicRange","16-bit (low noise & high well capacity)");
+  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"SensorCooling","Off");	
+}
+
+print("Current channel configuration: " + mmc.getCurrentConfig(CONFIG0));
+
+// set initial imaging mode
+mmc.setConfig(GROUP0, CONFIG0);
+print("\nCONFIGURING...");
+
+// configuration finished
+print("Configuration done");
+
+//////////////////////////////////////////////////////////////////////////////////
+// Add background subtraction. Each processors are on its thread.
+//////////////////////////////////////////////////////////////////////////////////
+print("Will create image processor...");
+
+subtractBgProcessor = new org.micromanager.subtractbackground.SubtractBackgroundProcessor();
+subtractBgProcessor.setApp(gui);
+gui.addImageProcessor(subtractBgProcessor);
+subtractBgProcessor.makeConfigurationGUI();
+
+arduinoProcessor = new org.micromanager.overlayarduino.OverlayArduinoProcessor();
+arduinoProcessor.setApp(gui);
+gui.addImageProcessor(arduinoProcessor);
+arduinoProcessor.makeConfigurationGUI();
+
+gui.showPipelinePanel();
+
+print("Processors are created.");
+
+//////////////////////////////////////////////////////////////////////////////////
+// Show Snap/Live window and Acquisition window
+//////////////////////////////////////////////////////////////////////////////////
+//snapLiveWin = gui.getSnapLiveWin();
+//snapLiveWin.setVisible(true);
+//gui.getSnapLiveWin().setVisible(true);
+gui.enableLiveMode(true);
+contrastSettings = gui.getContrastSettings();
+range = contrastSettings.getRange();
+acqNames = gui.getAcquisitionNames();
+print("Current ACQ");
+liveAcqName = null;
+for(int i=0;i<acqNames.length;i++){
+  print(acqNames[i]);
+  if(acqNames[i]=="Snap/Live Window"){
+  	  liveAcqName = acqNames[i];
+  }
+}
+contrastSettings = gui.getContrastSettings();
+// holds files,  .min, .max and .gamma
+if(liveAcqName!=null){
+	metaPanel = gui.getMetadataPanel();
+	contrastPanel = metaPanel.getContrastPanel();
+	acqCache=gui.getAcquisitionImageCache("Snap/Live Window");
+	numChannels = acqCache.getNumDisplayChannels();
+	IS_SNAP = false;
+	IS_MDA = true;
+	if(numChannels>0){
+		chIdx = 0;
+    	channelName = acqCache.getChannelName(chIdx);
+    	HistogramSettings hist = new HistogramSettings(10000,40000,1.0,65535,CompositeImage.GRAYSCALE);
+      gui.setChannelContrast("Snap/Live Window",chIdx,hist.min_,hist.max_);
+		// Contrast settings should be same in MDA and SnapLive.
+
+		gui.saveChannelHistogramSettings(mmc.getChannelGroup(),channelName,IS_SNAP,hist);
+		gui.saveChannelHistogramSettings(mmc.getChannelGroup(),channelName,IS_MDA,hist);		
+	}
+}
+// ChannelGroupÇÕCoreÇ™éùÇ¡ÇƒÇ¢ÇÈ
+
+
+
+// TODO
+//acqs = gui.getAcquisitionNames();
+//for (int i=0;i<acqs.length;i++){
+//	print(acqs[i]);
+//}
+
+//sdFormat = new SimpleDateFormat("yyyyMMdd");
+//gui.openAcquisition(gui.getUniqueAcquisitionName("gnp"),"C:Users/jpk10/AcquisitionData/"+sdFormat(new Date()),1000,0,0);
+
+//////////////////////////////////////////////////////////////////////////////////
+// Create another thread to watch TTL signal
+//////////////////////////////////////////////////////////////////////////////////
+//
+//acqByTTL = new org.micromanager.overlayarduino.AcqByTTL();
+//acqByTTL.setApp(gui);
+//acqByTTL.show();

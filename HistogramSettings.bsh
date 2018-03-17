@@ -1,0 +1,7 @@
+import org.micromanager.graph.HistogramSettings;
+import ij.CompositeImage;
+
+// public HistogramSettings(int min, int max, double gamma, int histMax, int displayMode) 
+
+HistogramSettings hist = new HistogramSettings(10000,30000,1.0,65535,CompositeImage.GRAYSCALE);
+print(hist.min_);
