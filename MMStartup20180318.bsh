@@ -4,25 +4,6 @@ import ij.CompositeImage;
 import org.micromanager.graph.HistogramSettings;
 
 //////////////////////////////////////////////////////////////////////////////////
-// functions
-//////////////////////////////////////////////////////////////////////////////////
-public void loadDev(String label,String moduleName,String deviceName){
-	mmc.loadDevice(label,moduleName,deviceName);
-}
-public void listDevicePropertyNames(String device){
-  properties = mmc.getDevicePropertyNames(device);
-  for(int i=0;i<properties.size();i++){
-  	 print(properties.get(i));
-  }
-}
-public void listAllowedPropNames(String label,String propName){
-	props = mmc.getAllowedPropertyValues(label,propName);
-	for(int i=0;i<props.size();i++){
-		print(props.get(i));
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////////////
 // Stop runnng instances and unload devices
 //////////////////////////////////////////////////////////////////////////////////
 gui.stopAllActivity();
@@ -31,9 +12,6 @@ if(imageProcessorPipeline!=null){
 	count = imageProcessorPipeline.size();
 	for (int i=0;i<count;i++){
 		gui.removeImageProcessor(imageProcessorPipeline.get(i));
-	}
-	if (count>0){
-  		print("Processors are cleared:" + String.valueOf(count)+"\n");
 	}
 }
 if(gui.getSnapLiveWin()!=null && gui.isLiveModeOn()){
@@ -44,40 +22,49 @@ mmc.unloadAllDevices();
 //////////////////////////////////////////////////////////////////////////////////
 // Initialize devices
 //////////////////////////////////////////////////////////////////////////////////
+// CHANGE HERE FOR YOUR CAMERA //
 USE_DEMOCAM = true;
-ANDOR_CMOS = "Andor sCMOS Camera";
-DEMOCAM = "DemoCamera";
-GROUP0 = "";
-CONFIG0 = "GNP default";
+/////////////////////////////////
 
 // reset previous configuration if any
 mmc.unloadAllDevices();
-
+L_COM = "COM3";
+M_COM = "SerialManager";
+L_ANDOR = "Andor sCMOS Camera";
+M_ANDOR = "AndorSDK3";
+L_DHUB = "DHub";
+M_DHUB = "DemoCamera";
+L_DCAM = "DCam";
+M_DCAM = "DemoCamera";
+L_AHUB = "Arduino-Hub";
+M_AHUB = "Arduino";
+L_AINP = "Arduino-Input";
+M_AINP = "Arduino";
 
 // load devices
-loadDev("COM3","SerialManager","COM3");
+mmc.loadDev(L_COM,M_COM,L_COM);
+mmc.loadDev(L_AHUB,M_AHUB,L_AHUB);
+mmc.loadDev(L_AINP,M_AINP,L_AINP);
 if (USE_DEMOCAM){
-  loadDev("DHub",DEMOCAM,"DHub");
-  loadDev("DCam",DEMOCAM,"DCam");
+  mmc.loadDev(L_DHUB,M_DHUB,L_DHUB);
+  mmc.loadDev(L_DCAM,M_DCAM,L_DCAM);
 }else{
-  loadDev(ANDOR_CMOS,"AndorSDK3",ANDOR_CMOS);
+  mmc.loadDev(L_ANDOR,M_ANDOR,D_ANDOR);
 }
-loadDev("Arduino-Hub","Arduino","Arduino-Hub");
-loadDev("Arduino-Input","Arduino","Arduino-Input");
 
 // Pre-init settings for devices
-mmc.setSerialProperties("COM3","500.0000","57600","0.0000","Off","None","1");
-mmc.setProperty("COM3","Verbose",0);
-mmc.setProperty("Arduino-Hub","Logic","Normal");
-mmc.setProperty("Arduino-Hub","Port","COM3");
-mmc.setProperty("Arduino-Input","Pin","All");
-mmc.setProperty("Arduino-Input","Pull-Up-Resistor","Off");
+mmc.setSerialProperties(L_COM,"500.0000","57600","0.0000","Off","None","1");
+mmc.setProperty(L_COM,"Verbose",0);
+mmc.setProperty(L_AHUB,"Logic","Normal");
+mmc.setProperty(L_AHUB,"Port","COM3");
+mmc.setProperty(L_AINP,"Pin","All");
+mmc.setProperty(L_AINP,"Pull-Up-Resistor","Off");
 
 // Hub (parent) references
 if(USE_DEMOCAM){
-  mmc.setParentLabel("DCam","DHub");
+  mmc.setParentLabel(L_DCOM,L_DHUB);
 }
-mmc.setParentLabel("Arduino-Input","Arduino-Hub");
+mmc.setParentLabel(L_AINP,L_AHUB);
 
 print("\nINITIALIZING...");
 mmc.initializeAllDevices();
@@ -86,37 +73,35 @@ mmc.initializeAllDevices();
 
 // Roles
 if(USE_DEMOCAM){
-  mmc.setProperty("Core","Camera","DCam");
+  mmc.setProperty("Core","Camera",L_DCAM);
 }else{
-  mmc.setProperty("Core","Camera",ANDOR_CMOS);
+  mmc.setProperty("Core","Camera",L_ANDOR);
 }
 
 // Configuration presets
-// Group: ZylaArduino
+// Group: "" (Default)
 // Preset: GNP default
 // 
+GROUP0 = "";
+CONFIG0 = "GNP default";
 if(USE_DEMOCAM){
-  mmc.defineConfig(GROUP0,CONFIG0,"DCam","BitDepth","16");
-  mmc.defineConfig(GROUP0,CONFIG0,"DCam","Exposure","30.0000");
+  mmc.defineConfig(GROUP0,CONFIG0,L_DCAM,"BitDepth","16");
+  mmc.defineConfig(GROUP0,CONFIG0,L_DCAM,"Exposure","30.0000");
   mmc.defineConfig(GROUP0,CONFIG0,"Core","Camera","DCam");
 }else{
-//  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"AcquisitionWindow", "512x512"); <- error
-//  listAllowedPropNames(ANDOR_CMOS,"AcquisitionWindow");
-  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"AcquisitionWindow", " 512x512"); // <- whitespace!
+  // Use listAllowedPropNames method in _DeviceUtility.bsh to confirm allowed property names.
+  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"AcquisitionWindow", " 512x512"); // whitespace necessary!
   mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"Exposure","30.0000");
   mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"FrameRate","80.1899");
   mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"Sensitivity/DynamicRange","16-bit (low noise & high well capacity)");
   mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"SensorCooling","Off");	
 }
-
-print("Current channel configuration: " + mmc.getCurrentConfig(CONFIG0));
-
 // set initial imaging mode
 mmc.setConfig(GROUP0, CONFIG0);
-print("\nCONFIGURING...");
+print("Current channel configuration: " + mmc.getCurrentConfig(CONFIG0));
 
 // configuration finished
-print("Configuration done");
+print("Configuration done.");
 
 //////////////////////////////////////////////////////////////////////////////////
 // Add background subtraction. Each processors are on its thread.
@@ -175,23 +160,22 @@ if(liveAcqName!=null){
 		gui.saveChannelHistogramSettings(mmc.getChannelGroup(),channelName,IS_MDA,hist);		
 	}
 }
-// ChannelGroup‚ÍCore‚ªŽ‚Á‚Ä‚¢‚é
-
-
-
-// TODO
-//acqs = gui.getAcquisitionNames();
-//for (int i=0;i<acqs.length;i++){
-//	print(acqs[i]);
-//}
-
-//sdFormat = new SimpleDateFormat("yyyyMMdd");
-//gui.openAcquisition(gui.getUniqueAcquisitionName("gnp"),"C:Users/jpk10/AcquisitionData/"+sdFormat(new Date()),1000,0,0);
 
 //////////////////////////////////////////////////////////////////////////////////
 // Create another thread to watch TTL signal
 //////////////////////////////////////////////////////////////////////////////////
+
 //
 //acqByTTL = new org.micromanager.overlayarduino.AcqByTTL();
 //acqByTTL.setApp(gui);
 //acqByTTL.show();
+//
+//while(true){}
+// while(acqByTTL.isFallingAt0){
+//  Run acquisition for stationary GNP to save.
+// }
+// while(acqByTTL.isRisingAt0){
+//  Run acquisition for moving GNP to save.
+//   }
+//}
+//}

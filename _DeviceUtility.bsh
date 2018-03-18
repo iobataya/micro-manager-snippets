@@ -1,0 +1,12 @@
+public void listDevicePropertyNames(String device){
+  properties = mmc.getDevicePropertyNames(device);
+  for(int i=0;i<properties.size();i++){
+  	 print(properties.get(i));
+  }
+}
+public void listAllowedPropNames(String label,String propName){
+	props = mmc.getAllowedPropertyValues(label,propName);
+	for(int i=0;i<props.size();i++){
+		print(props.get(i));
+	}
+}
