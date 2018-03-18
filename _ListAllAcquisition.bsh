@@ -1,0 +1,6 @@
+// List all Acquisitions
+acqs = gui.getAcquisitionNames();
+print("\n");
+for (int i=0;i<acqs.length;i++){
+	print(acqs[i]);
+}

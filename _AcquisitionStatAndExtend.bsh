@@ -1,0 +1,2 @@
+gui.runAcquisition("stat",acq.getRootName());
+gui.runAcquisition("extend",acq.getRootName());
