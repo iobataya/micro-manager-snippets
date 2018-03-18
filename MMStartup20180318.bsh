@@ -23,33 +23,28 @@ mmc.unloadAllDevices();
 // Initialize devices
 //////////////////////////////////////////////////////////////////////////////////
 // CHANGE HERE FOR YOUR CAMERA //
-USE_DEMOCAM = true;
+// set false to use Andor Zyla //
+USE_DEMOCAM = false;
 /////////////////////////////////
 
 // reset previous configuration if any
 mmc.unloadAllDevices();
-L_COM = "COM3";
-M_COM = "SerialManager";
-L_ANDOR = "Andor sCMOS Camera";
-M_ANDOR = "AndorSDK3";
-L_DHUB = "DHub";
-M_DHUB = "DemoCamera";
-L_DCAM = "DCam";
-M_DCAM = "DemoCamera";
-L_AHUB = "Arduino-Hub";
-M_AHUB = "Arduino";
-L_AINP = "Arduino-Input";
-M_AINP = "Arduino";
+L_COM = "COM3";M_COM = "SerialManager";
+L_ANDOR = "Andor sCMOS Camera";M_ANDOR = "AndorSDK3";
+L_DHUB = "DHub";M_DHUB = "DemoCamera";
+L_DCAM = "DCam";M_DCAM = "DemoCamera";
+L_AHUB = "Arduino-Hub";M_AHUB = "Arduino";
+L_AINP = "Arduino-Input";M_AINP = "Arduino";
 
 // load devices
-mmc.loadDev(L_COM,M_COM,L_COM);
-mmc.loadDev(L_AHUB,M_AHUB,L_AHUB);
-mmc.loadDev(L_AINP,M_AINP,L_AINP);
+mmc.loadDevice(L_COM,M_COM,L_COM);
+mmc.loadDevice(L_AHUB,M_AHUB,L_AHUB);
+mmc.loadDevice(L_AINP,M_AINP,L_AINP);
 if (USE_DEMOCAM){
-  mmc.loadDev(L_DHUB,M_DHUB,L_DHUB);
-  mmc.loadDev(L_DCAM,M_DCAM,L_DCAM);
+  mmc.loadDevice(L_DHUB,M_DHUB,L_DHUB);
+  mmc.loadDevice(L_DCAM,M_DCAM,L_DCAM);
 }else{
-  mmc.loadDev(L_ANDOR,M_ANDOR,D_ANDOR);
+  mmc.loadDevice(L_ANDOR,M_ANDOR,L_ANDOR);
 }
 
 // Pre-init settings for devices
@@ -62,7 +57,7 @@ mmc.setProperty(L_AINP,"Pull-Up-Resistor","Off");
 
 // Hub (parent) references
 if(USE_DEMOCAM){
-  mmc.setParentLabel(L_DCOM,L_DHUB);
+  mmc.setParentLabel(L_COM,L_DHUB);
 }
 mmc.setParentLabel(L_AINP,L_AHUB);
 
@@ -90,11 +85,11 @@ if(USE_DEMOCAM){
   mmc.defineConfig(GROUP0,CONFIG0,"Core","Camera","DCam");
 }else{
   // Use listAllowedPropNames method in _DeviceUtility.bsh to confirm allowed property names.
-  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"AcquisitionWindow", " 512x512"); // whitespace necessary!
-  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"Exposure","30.0000");
-  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"FrameRate","80.1899");
-  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"Sensitivity/DynamicRange","16-bit (low noise & high well capacity)");
-  mmc.defineConfig(GROUP0,CONFIG0,ANDOR_CMOS,"SensorCooling","Off");	
+  mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"AcquisitionWindow", " 512x512"); // whitespace necessary!
+  mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"Exposure","30.0000");
+  //mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"FrameRate","30.0000"); set by exposure automatically
+  mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"Sensitivity/DynamicRange","16-bit (low noise & high well capacity)");
+  mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"SensorCooling","Off");	
 }
 // set initial imaging mode
 mmc.setConfig(GROUP0, CONFIG0);

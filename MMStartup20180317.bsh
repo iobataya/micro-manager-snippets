@@ -179,6 +179,7 @@ if(liveAcqName!=null){
 
 
 
+
 // TODO
 //acqs = gui.getAcquisitionNames();
 //for (int i=0;i<acqs.length;i++){
