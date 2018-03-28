@@ -1,0 +1,143 @@
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import ij.CompositeImage;
+import org.micromanager.graph.HistogramSettings;
+import org.micromanager.arduinoio.ArduinoPoller;
+
+//////////////////////////////////////////////////////////////////////////////////
+// Stop runnng instances and unload devices
+//////////////////////////////////////////////////////////////////////////////////
+gui.stopAllActivity();
+imageProcessorPipeline = gui.getImageProcessorPipeline();
+if(imageProcessorPipeline!=null){
+	count = imageProcessorPipeline.size();
+	for (int i=0;i<count;i++){
+		gui.removeImageProcessor(imageProcessorPipeline.get(i));
+	}
+}
+if(gui.getSnapLiveWin()!=null && gui.isLiveModeOn()){
+	gui.enableLiveMode(false);
+}
+mmc.unloadAllDevices();
+
+//////////////////////////////////////////////////////////////////////////////////
+// Initialize devices
+//////////////////////////////////////////////////////////////////////////////////
+// CHANGE HERE FOR YOUR CAMERA //
+// set false to use Andor Zyla //
+USE_DEMOCAM = false;
+/////////////////////////////////
+
+// reset previous configuration if any
+mmc.unloadAllDevices();
+L_COM = "COM3";M_COM = "SerialManager";
+L_ANDOR = "Andor sCMOS Camera";M_ANDOR = "AndorSDK3";
+L_DHUB = "DHub";M_DHUB = "DemoCamera";
+L_DCAM = "DCam";M_DCAM = "DemoCamera";
+L_AHUB = "Arduino-Hub";M_AHUB = "Arduino";
+L_AINP = "Arduino-Input";M_AINP = "Arduino";
+
+// load devices
+mmc.loadDevice(L_COM,M_COM,L_COM);
+mmc.loadDevice(L_AHUB,M_AHUB,L_AHUB);
+mmc.loadDevice(L_AINP,M_AINP,L_AINP);
+if (USE_DEMOCAM){
+  mmc.loadDevice(L_DHUB,M_DHUB,L_DHUB);
+  mmc.loadDevice(L_DCAM,M_DCAM,L_DCAM);
+}else{
+  mmc.loadDevice(L_ANDOR,M_ANDOR,L_ANDOR);
+}
+
+// Pre-init settings for devices
+mmc.setSerialProperties(L_COM,"500.0000","57600","0.0000","Off","None","1");
+mmc.setProperty(L_COM,"Verbose",0);
+mmc.setProperty(L_AHUB,"Logic","Normal");
+mmc.setProperty(L_AHUB,"Port","COM3");
+mmc.setProperty(L_AINP,"Pin","All");
+mmc.setProperty(L_AINP,"Pull-Up-Resistor","Off");
+
+// Hub (parent) references
+if(USE_DEMOCAM){
+  mmc.setParentLabel(L_COM,L_DHUB);
+}
+mmc.setParentLabel(L_AINP,L_AHUB);
+
+print("\nINITIALIZING...");
+mmc.initializeAllDevices();
+
+// initialize the entire system
+
+// Roles
+if(USE_DEMOCAM){
+  mmc.setProperty("Core","Camera",L_DCAM);
+}else{
+  mmc.setProperty("Core","Camera",L_ANDOR);
+}
+
+// Configuration presets
+// Group: "" (Default)
+// Preset: GNP default
+// 
+GROUP0 = "Default";
+CONFIG0 = "GNP default";
+CONFIG1 = "Full image 2048";
+
+if(USE_DEMOCAM){
+	// GNP default
+	mmc.defineConfig(GROUP0,CONFIG0,L_DCAM,"BitDepth","16");
+	mmc.defineConfig(GROUP0,CONFIG0,L_DCAM,"Exposure","30.0000");
+	mmc.defineConfig(GROUP0,CONFIG0,"Core","Camera","DCam");
+	// Full range 2048
+	mmc.defineConfig(GROUP0,CONFIG0,L_DCAM,"BitDepth","16");
+	mmc.defineConfig(GROUP0,CONFIG0,L_DCAM,"Exposure","30.0000");
+	mmc.defineConfig(GROUP0,CONFIG0,"Core","Camera","DCam");
+}else{
+	// GNP default
+	mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"AcquisitionWindow", " 512x512"); // whitespace necessary!
+	// If you want to check allowed property name, 
+	// Use listAllowedPropNames method in _DeviceUtility.bsh to confirm allowed property names.
+	mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"Exposure","30.0000"); // Frame rage is determined by this exposure.
+	mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"Sensitivity/DynamicRange","16-bit (low noise & high well capacity)");
+	mmc.defineConfig(GROUP0,CONFIG0,L_ANDOR,"SensorCooling","On");	
+
+	// Full range 2048x2048
+	mmc.defineConfig(GROUP0,CONFIG1,L_ANDOR,"AcquisitionWindow", "Full Image");
+	mmc.defineConfig(GROUP0,CONFIG1,L_ANDOR,"Exposure","30.0000"); // Frame rage is determined by this exposure.
+	mmc.defineConfig(GROUP0,CONFIG1,L_ANDOR,"Sensitivity/DynamicRange","16-bit (low noise & high well capacity)");
+	mmc.defineConfig(GROUP0,CONFIG1,L_ANDOR,"SensorCooling","On");		
+}
+// set initial imaging mode
+mmc.setConfig(GROUP0, CONFIG0);
+print("Current channel configuration: " + mmc.getCurrentConfig(CONFIG0));
+
+// configuration finished
+print("Configuration done.");
+
+//////////////////////////////////////////////////////////////////////////////////
+// Add background subtraction. Each processors are on its thread.
+//////////////////////////////////////////////////////////////////////////////////
+arduinoIO = org.micromanager.arduinoio.ArduinoIoMigForm.getInstance(gui);
+
+print("Will create image processor...");
+
+subtractBgProcessor = new org.micromanager.subtractbackground.SubtractBackgroundProcessor();
+subtractBgProcessor.setApp(gui);
+gui.addImageProcessor(subtractBgProcessor);
+subtractBgProcessor.makeConfigurationGUI();
+
+
+//arduinoProcessor = new org.micromanager.overlayarduino.OverlayArduinoProcessor();
+//arduinoProcessor.setApp(gui);
+//gui.addImageProcessor(arduinoProcessor);
+//arduinoProcessor.makeConfigurationGUI();
+
+
+gui.showPipelinePanel();
+
+print("Processors are created.");
+
+gui.refreshGUI();
+
+gui.enableLiveMode(true);
+
+

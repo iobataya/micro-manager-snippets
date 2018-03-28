@@ -1,0 +1,40 @@
+//////////////////////////////////////////////////////////////////////////////////
+// Get instance of snap/live windows
+//////////////////////////////////////////////////////////////////////////////////
+liveManager = gui.getSnapLiveManager();
+if(!gui.isLiveModeOn()){
+	gui.enableLiveMode(true);
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+// Start acquisiton when Digital Input 0 falls to LOW
+//////////////////////////////////////////////////////////////////////////////////
+arduinoIO = org.micromanager.arduinoio.ArduinoIoMigForm.getInstance(gui);
+print("started");
+
+boolean isRunning = ((arduinoIO.getCurrentDigitalInput() & 0x01) == 0);
+try{
+	while(true){
+		if(!gui.isAcquisitionRunning() && 
+		   !isRunning &&
+		   (arduinoIO.getCurrentDigitalInput() & 0x01) == 0){
+   		 liveManager.moveDisplayToFront();
+          contrastLive = gui.getContrastSettings(); // org.micromanager.utils.ContrastSettings
+          histogram = new HistogramSettings(contrastLive.min,contrastLive.max,contrastLive.gamma,65535,CompositeImage.GRAYSCALE);
+	       gui.saveChannelHistogramSettings("","Default",true,histogram);
+			 gui.runAcquisition();
+			 print("acquisition started.");
+			 isRunning = true;
+		}
+		if(!gui.isAcquisitionRunning() && ((arduinoIO.getCurrentDigitalInput() & 0x01) ==1)){
+			if(gui.isLiveModeOn()==false){
+				liveManager.moveDisplayToFront();
+				gui.enableLiveMode(true);
+				isRunning = false;
+			}
+		}
+		Thread.sleep(1);
+	}
+}catch(Exception ex){
+	print("Interrupted.");
+}
