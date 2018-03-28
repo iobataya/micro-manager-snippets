@@ -126,10 +126,10 @@ gui.addImageProcessor(subtractBgProcessor);
 subtractBgProcessor.makeConfigurationGUI();
 
 
-//arduinoProcessor = new org.micromanager.overlayarduino.OverlayArduinoProcessor();
-//arduinoProcessor.setApp(gui);
-//gui.addImageProcessor(arduinoProcessor);
-//arduinoProcessor.makeConfigurationGUI();
+arduinoProcessor = new org.micromanager.overlayarduino.OverlayArduinoProcessor();
+arduinoProcessor.setApp(gui);
+gui.addImageProcessor(arduinoProcessor);
+arduinoProcessor.makeConfigurationGUI();
 
 
 gui.showPipelinePanel();

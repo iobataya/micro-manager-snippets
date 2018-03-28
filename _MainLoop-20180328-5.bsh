@@ -1,0 +1,45 @@
+import ij.process.*;
+GRAYSCALE = 3;
+//////////////////////////////////////////////////////////////////////////////////
+// Get instance of snap/live windows
+//////////////////////////////////////////////////////////////////////////////////
+liveManager = gui.getSnapLiveManager();
+
+
+//////////////////////////////////////////////////////////////////////////////////
+// Start acquisiton when Digital Input 0 falls to LOW
+//////////////////////////////////////////////////////////////////////////////////
+arduinoIO = org.micromanager.arduinoio.ArduinoIoMigForm.getInstance(gui);
+print("started");
+
+boolean isWaiting = true;
+
+try{
+	while(true){
+		if(!gui.isAcquisitionRunning() && ((arduinoIO.getCurrentDigitalInput() & 0x01)==0x00)){
+ 			long start = System.nanoTime();
+ 			print("Trigger detected.");
+   		 liveManager.moveDisplayToFront();
+          contrastLive = gui.getContrastSettings(); // org.micromanager.utils.ContrastSettings
+          histogram = new org.micromanager.graph.HistogramSettings(contrastLive.min,contrastLive.max,contrastLive.gamma,65535,GRAYSCALE);
+	       gui.saveChannelHistogramSettings("","Default",true,histogram);
+	       long beforeACQ = System.nanoTime();
+	       print("Trigger > Acquisition : "+ String.valueOf((beforeACQ-start)/1000)+" ms");
+	       print("Acquisition is starting.");
+			 gui.runAcquisition();
+			 print("Acquisition finished.");
+			 long afterACQ = System.nanoTime();
+			 print("ACQ duration :" + String.valueOf((afterACQ-beforeACQ)/1000) + " ms");
+			 isWaiting=false;
+		}
+		if (isWaiting==false && (arduinoIO.getCurrentDigitalInput() & 0x01)==0x01){
+		  isWaiting=true;
+		  gui.enableLiveMode(true);
+		  print("Waiting for trigger...");
+		}
+		Thread.sleep(1);
+	}
+}catch(Exception ex){
+	print("Interrupted.");
+}
+gui.enableLiveMode(true);
