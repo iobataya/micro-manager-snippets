@@ -1,0 +1,12 @@
+import ij.CompositeImage;
+import org.micromanager.graph.HistogramSettings;
+
+liveManager = gui.getSnapLiveManager();
+liveManager.moveDisplayToFront();
+contrastLive = gui.getContrastSettings(); // org.micromanager.utils.ContrastSettings
+histogram = new HistogramSettings(contrastLive.min,contrastLive.max,contrastLive.gamma,65535,CompositeImage.GRAYSCALE);
+gui.saveChannelHistogramSettings("","Default",true,histogram);
+
+///////////////////////
+// Run acquisition of MDA.
+gui.runAcquisition();
